@@ -1,0 +1,144 @@
+<html>
+	<head>
+	</head>
+	<body>
+		<canvas id="canvas" ></canvas>
+		<script>
+			window.onload = function() {
+				var c = document.getElementById('canvas');
+				var ctx = c.getContext('2d');
+				var canvasWidth = 768;
+				var canvasHeight = 768;
+				
+				c.width = canvasWidth;
+				c.height = canvasHeight;
+				
+				var imageData = ctx.createImageData(canvasWidth, canvasHeight);
+				
+				var offsetX = -canvasWidth / 2;
+				var offsetY = -canvasHeight / 2;
+				var x = -100;
+				var y = 0;
+				var zoom = 150;
+				
+				var palette = [];
+				var max = 200;
+				
+				function init(){
+					c.addEventListener("mousedown", mouseDown);
+					initPalette();
+					initImage();
+					main();
+				}
+				
+				function main(){
+					window.requestAnimationFrame(main);
+					ctx.putImageData(imageData, 0, 0);
+				}
+				
+				function initPalette(){
+					var offsetR = 0;
+					var offsetG = 16;
+					var offsetB = 80;
+					
+					for(var i = 0; i<256; i++){
+						palette[i] = { r: offsetR, g: offsetG, b:offsetB };
+						if(i < 64){
+							offsetB += 3;
+						}else if (i < 128){
+							offsetG += 3;
+						}else if (i < 192){
+							offsetR += 3;
+						}
+					}
+				}
+				
+				function initImage(){
+					for (var i = 0; i < canvasHeight; i++){
+						for (var j = 0; j < canvasWidth; j++){
+							iterate(i, j, max);
+						}
+					}
+				}
+				
+				function iterate(i, j, max){
+					var x0 = (j + offsetX + x) / zoom;
+					var y0 = (i + offsetY + y) / zoom;
+					
+					var a = 0;
+					var b = 0;
+					var rx = 0;
+					var ry = 0;
+					
+					var iterations = 0;
+					while (iterations < max && (rx * rx + ry * ry <= 4)){
+						rx = a * a - b * b + x0;
+						ry = 2 * a * b + y0;
+						
+						a = rx;
+						b = ry;
+						iterations++;
+					}
+					
+					var color;
+					if (iterations == max){
+						color = { r:0, g:0, b:0};
+					}else{
+						var index = Math.floor((iterations / (max - 1)) * 255);
+						color = palette[index];
+					}
+					
+					
+					var pixelindex = (i * canvasWidth + j) * 4;
+					imageData.data[pixelindex] = color.r;
+					imageData.data[pixelindex+1] = color.g;
+					imageData.data[pixelindex+2] = color.b;
+					imageData.data[pixelindex+3] = 255;
+				}
+				
+				function zoomFractal(j, i, factor, zoomin){
+					if(zoomin){
+						zoom *= factor;
+						max += 10;
+						console.log(max);
+						x = factor * (j + offsetX + x);
+						y = factor * (i + offsetY + y);
+						console.log(x + " y: " + y);
+					}else{
+						zoom /= factor;
+						x = (j + offsetX + x) / factor;
+						y = (i + offsetY + y) / factor;
+					}
+				}
+				
+				function mouseDown(e){
+					var pos = mousePos(c, e);
+					
+					var zoomin = true;
+					if(e.ctrlKey){
+						zoomin = false;
+					}
+					
+					var zoomfactor = 2;
+					if(e.shiftKey){
+						zoomfactor = 1;
+					}
+					
+					zoomFractal(pos.x, pos.y, zoomfactor, zoomin);
+					initImage();
+				}
+				
+				function mousePos(c, e){
+					var rect = c.getBoundingClientRect();
+					return {
+						x: Math.round((e.clientX - rect.left)/(rect.right - rect.left)*c.width),
+						y: Math.round((e.clientY - rect.top)/(rect.bottom - rect.top)*c.height)
+					};
+				}
+				
+				init();
+			};
+		</script>
+	</body>
+</html>
+
